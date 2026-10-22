@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f9d7ed">
+  <title>Little Animal Identifier</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app">
+    <div class="eyebrow">A tiny machine-learning experiment ✨</div>
+    <h1>Little Animal Identifier</h1>
+    <p class="intro">Choose a picture and let a pretrained image model guess what it sees.</p>
+    <section class="panel" aria-label="Image classification">
+      <label class="upload" for="photo">Choose an animal photo <span>JPG, PNG, or WebP · up to 10 MB</span></label>
+      <input id="photo" type="file" accept="image/jpeg,image/png,image/webp">
+      <div class="preview-wrap"><img id="preview" alt="Your selected photo" hidden></div>
+      <p id="status" role="status" aria-live="polite">Loading the image model…</p>
+      <button id="identify" disabled>Identify animal</button>
+      <div id="results" class="results" aria-live="polite" hidden></div>
+    </section>
+    <p class="note">This is a learning project, not a wildlife identification or safety tool. Predictions can be wrong. Images are processed in your browser; the model code and weights load from external CDNs.</p>
+    <footer>Made with curiosity 💜</footer>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.1/dist/mobilenet.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

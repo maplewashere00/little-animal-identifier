@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#fce1f2">
+  <title>Cat Coat Lab — Little Animal Identifier</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <a class="back" href="../">← Little Animal Identifier</a>
+      <div class="kicker">Experimental research preview ✨</div>
+      <h1>Cat Coat Lab <span aria-hidden="true">🐈</span></h1>
+      <p>Can we recognize a cat's <strong>fur color</strong> and <strong>coat pattern</strong> separately? Let's find out.</p>
+    </header>
+
+    <section class="panel" aria-labelledby="test-title">
+      <h2 id="test-title">Try a cat photo</h2>
+      <p class="explain">This first experiment uses a different, larger AI model. On a phone, its first download may take a while. It's not trained specifically for coat patterns yet.</p>
+      <label class="upload" for="photo">Choose a photo of one cat <small>JPG, PNG, or WebP, up to 10 MB</small></label>
+      <input id="photo" type="file" accept="image/jpeg,image/png,image/webp">
+      <div class="photo-frame"><img id="preview" hidden alt="Your selected cat photo"></div>
+      <details class="before-label">
+        <summary>Optional: write down the correct answer before testing</summary>
+        <p>Mark what you know first, so the AI's guess doesn't influence your evaluation.</p>
+        <div class="fieldgrid">
+          <label>Actual main color<select id="actual-color"><option value="">Unsure / skip</option></select></label>
+          <label>Actual main pattern<select id="actual-pattern"><option value="">Unsure / skip</option></select></label>
+        </div>
+      </details>
+      <button id="analyze" disabled>Analyze coat</button>
+      <p id="status" role="status" aria-live="polite">Choose a cat photo to begin.</p>
+      <p id="model-warning" class="small muted">Photos stay in your browser. Model files download from a third-party host; normal request metadata may be logged there.</p>
+    </section>
+
+    <section id="results" class="panel" aria-live="polite" hidden>
+      <h2>What does the model see?</h2>
+      <div class="resultgrid">
+        <article>
+          <div class="eyebrow">Main coat color</div>
+          <h3 id="color-name"></h3>
+          <p id="color-score"></p>
+          <div id="color-alternatives" class="alt"></div>
+        </article>
+        <article>
+          <div class="eyebrow">Visible coat pattern</div>
+          <h3 id="pattern-name"></h3>
+          <p id="pattern-score"></p>
+          <div id="pattern-alternatives" class="alt"></div>
+        </article>
+      </div>
+      <p class="science"><strong>About those percentages:</strong> They describe which of our offered labels the model prefers, <em>not</em> the chance it is correct. For example, 95% here does not prove 95% accuracy. Pattern categories can overlap, and this first experiment is not breed identification.</p>
+      <button id="record" class="secondary">Add result to test log</button>
+      <span id="record-status" role="status" class="small"></span>
+    </section>
+
+    <section class="panel" aria-labelledby="log-title">
+      <div class="side-by-side"><h2 id="log-title">Our mini test log</h2><span id="counter" class="tag">0 samples</span></div>
+      <p class="explain">After each photo, you can record its prediction. If you entered the true labels, we can count exact matches. Export just the results as CSV—no photos or filenames.</p>
+      <div id="metrics" class="metrics">No labeled tests yet.</div>
+      <button id="download" class="secondary" disabled>Export test log (CSV)</button>
+      <button id="clear" class="text-button" disabled>Clear this session</button>
+    </section>
+    <footer>For curious cats and curious humans 💜 · <a href="https://github.com/maplewashere00/little-animal-identifier">Our GitHub project</a></footer>
+  </main>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

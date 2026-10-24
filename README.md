@@ -4,15 +4,15 @@ Our original [MobileNet v2](https://github.com/tensorflow/tfjs-models/tree/maste
 
 **Live website:** https://maplewashere00.github.io/little-animal-identifier/
 
-## Current modes
+## Current experience
 
-- **🌎 Identify animal (default):** predicts the best animal/image category from the original full photo and shows its original model score, plus four alternatives. It also shows cat-appearance clues if MobileNet returned any known domestic-cat labels.
-- **🔎 Also check a centered close-up (optional):** asks the same MobileNet model to classify a crop with 14% removed from each edge. Shows this as a **separate** result so we can compare background effects. It is not automatically more accurate; don't use it for off-center animals.
+- **🌎 Identify animal (default):** predicts the best animal/image category from the original full photo and shows its original model score, plus four alternatives. It translates recognized domestic-cat labels into cautious appearance descriptions (for example, `Egyptian cat` becomes `Short-haired domestic cat appearance`) while retaining the exact original ImageNet label and model score. It also shows cat-appearance clues if MobileNet returned any known domestic-cat labels.
+- **🔎 Compare three views (optional):** classifies the original photo, a horizontal mirror, and a centered crop removing 14% from each edge. It shows the original top labels and raw model scores separately, then reports whether they agree. A mirrored view and crop of the same photo are correlated, not independent observations. The crop may cut off off-center animals.
 - **[Cat Coat Lab](coat-lab/):** earlier experimental coat color/pattern page retained for reference; not the default or a proven improvement.
 
 ## Accuracy and confidence
 
-A model score is **not** the measured percentage of predictions it gets correct. We don't inflate scores or silently select the highest-scoring view. This update removes the separate cat-location detector and keeps the original animal classifier with a controlled crop comparison, **not** a trained accuracy upgrade. Improving real-world accuracy requires labeled photos, evaluation, and potentially a better trained model.
+A model score is **not** the measured percentage of predictions it gets correct. We don't inflate scores or silently select the highest-scoring view. The cat-location detector has been removed. Friendly descriptions and three-view consistency checks improve clarity and expose instability; they are **not** trained accuracy upgrades or calibrated confidence. Improving real-world accuracy requires labeled photos, evaluation, and potentially a better trained model.
 
 The original model has only a few domestic-cat appearance categories. Tabby is a pattern, not a breed. Coat color and most patterns are outside its supported label set.
 

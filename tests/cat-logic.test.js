@@ -47,3 +47,24 @@ test('rejects invalid scores without crashing', () => {
   const a = assessViews([[pred('tabby', NaN), pred('Siamese cat', 2)]]);
   assert.equal(a.verdict, 'no-cat-signal');
 });
+
+test('cat detector filters non-cats and low scores', () => {
+  const a = require('../cat-logic.js').assess([
+    { class: 'dog', score: .99, bbox: [0, 0, 30, 30] },
+    { class: 'cat', score: .3, bbox: [0, 0, 30, 30] },
+    { class: 'cat', score: .78, bbox: [1, 2, 40, 30] }
+  ]);
+  assert.equal(a.verdict, 'detected');
+  assert.equal(a.cats.length, 1);
+  assert.equal(a.topScore, .78);
+});
+test('cat detector distinguishes possible and absent cats', () => {
+  const { assess } = require('../cat-logic.js');
+  assert.equal(assess([{ class: 'cat', score: .5, bbox: [0, 0, 20, 20] }]).verdict, 'possible');
+  assert.equal(assess([{ class: 'dog', score: .9, bbox: [0, 0, 20, 20] }]).verdict, 'none');
+});
+test('optional cropped cat appearance guess is available', () => {
+  const { catLook } = require('../cat-logic.js');
+  assert.equal(catLook([pred('tabby, tabby cat', .7)]).label, 'Tabby-patterned cat');
+  assert.equal(catLook([pred('golden retriever', .8)]), null);
+});

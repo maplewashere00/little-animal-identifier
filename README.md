@@ -1,34 +1,41 @@
-# Little Animal Identifier 🐾
+# Little Animal Identifier 🐾 — Cat Detective v2
 
-A beginner-friendly, static website that uses a pretrained **MobileNet v2** model to identify what's in a photo. It runs entirely in the browser after downloading TensorFlow.js and model weights; **no API key, backend, or paid service** is required.
+A browser-only animal identifier for GitHub Pages, with two modes:
 
-## Try it locally
+- **Cat Detective:** detects cats in photos using [TensorFlow.js COCO-SSD](https://github.com/tensorflow/tfjs-models/tree/master/coco-ssd) with a lightweight MobileNet v2 backbone. Draws boxes around possible cats. Scores at least 0.70 display **Cat detected**; scores 0.40–0.69 display **Possible cat — uncertain**; otherwise displays **No cat detected** (which does **not** rule out a cat). Thresholds are uncalibrated starting points, not measured precision values.
+- **Identify anything:** preserves the original [MobileNet v2](https://github.com/tensorflow/tfjs-models/tree/master/mobilenet) top-five ImageNet predictions.
 
-Open `index.html` in a browser with an internet connection, choose a JPG/PNG/WebP photo under 10 MB, and click **Identify animal**. If your browser blocks local model loading, serve the folder with `python3 -m http.server 8000` and visit `http://localhost:8000`.
+Models load on demand after choosing an image, with no API key and no server-side photo upload. Network access is needed to fetch JavaScript libraries and the model weights. External providers may log normal download request metadata.
 
-## Publish on GitHub Pages
+## Live website
 
-1. Create a **public** repository named `little-animal-identifier`.
-2. Upload the files in this folder to the repository root.
-3. Go to **Settings → Pages → Build and deployment**, choose **Deploy from a branch**, select `main` and `/ (root)`, and save.
-4. Wait for GitHub Pages to publish the site. GitHub will display its URL.
+https://maplewashere00.github.io/little-animal-identifier/
 
-## What it actually does
+## Run locally
 
-MobileNet is trained on ImageNet's 1,000 classes. It may identify many kinds of animals, but **not every animal**. The app shows the top predicted class and four alternatives, with raw model scores. These scores are not calibrated probabilities. This is **not** a specially trained cat/dog/rabbit classifier or a species verification tool.
+Serve the project folder with `python3 -m http.server 8000`, then open `http://localhost:8000`. Select a JPG, PNG, or WebP photo under 10MB.
 
-Photos are processed locally in the browser; this app does not upload them to a server. JavaScript libraries and model weights are downloaded from external CDNs. Those providers may receive ordinary network request metadata. The first model load needs internet access.
+## Run offline logic tests
 
-## Project files
+`node --test tests/cat-logic.test.js`
 
-- `index.html`: interface and model script loading
-- `style.css`: layout and styling
-- `app.js`: photo handling and predictions
+These tests check decision thresholds and edge cases using *synthetic model predictions*. They do not establish real-world cat recognition accuracy.
 
-## Limitations and future ideas
+## Evaluate reliability before claiming high accuracy
 
-Predictions can be wrong, especially for unusual photos, multiple animals, and animals outside the model's training categories. Future versions could add an animal-only label mapping, a more specialized model, accessibility improvements, or tests. Do not rely on this project for safety decisions.
+Collect consented, correctly labeled, diverse test photos that were **not used for tuning**: cats of different breeds/ages/lighting/poses, cats mixed with dogs, distant cats, dogs, stuffed animals, foxes, frogs, and pictures without animals. Score **precision** (of photos labeled 'Cat detected', what fraction actually contain cats), **recall** (of photos with cats, what fraction are detected), false positive/false negative counts, plus phone performance. Include ambiguous cases and do not cherry-pick examples. Tune the two cat thresholds only using a *separate* development set, and retest on the untouched evaluation set.
+
+See [EVALUATION.md](EVALUATION.md) for a simple testing worksheet and metric definitions.
+
+If the detector is not good enough, evaluate a fine-tuned cat vs. non-cat model. No model can be honestly advertised as 100% accurate on all images.
+
+## Safety, privacy, and limitations
+
+- Scores are detector confidence values, **not** the percentage chance that the prediction is correct.
+- Nothing is guaranteed, especially small/occluded cats and photographs outside the model's training distribution.
+- This is a fun educational project, not a professional species identification or safety tool.
+- The model's weights and TF.js libraries load from third-party CDNs, so a connection is needed for the first load.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see LICENSE.

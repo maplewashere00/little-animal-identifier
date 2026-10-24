@@ -1,42 +1,49 @@
 'use strict';
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
-const { assess } = require('../cat-logic.js');
-const box = [10, 20, 200, 100];
-const cat = score => ({ class: 'cat', score, bbox: box });
+const { appearanceId, summarize, assessViews } = require('../cat-logic.js');
+const pred = (className, probability) => ({ className, probability });
 
-test('strong cat score gets detected verdict', () => {
-  const result = assess([cat(0.98)]);
-  assert.equal(result.verdict, 'detected');
-  assert.equal(result.topScore, 0.98);
+test('recognizes tabby and tiger cat as one appearance', () => {
+  assert.equal(appearanceId('tabby, tabby cat'), 'tabby');
+  assert.equal(appearanceId('tiger cat'), 'tabby');
 });
-test('borderline cat score receives uncertain verdict', () => {
-  assert.equal(assess([cat(0.42)]).verdict, 'possible');
-  assert.equal(assess([cat(0.69)]).verdict, 'possible');
+test('does not confuse wild cats with domestic cat appearances', () => {
+  assert.equal(appearanceId('tiger'), null);
+  assert.equal(appearanceId('lion'), null);
 });
-test('boundary scores are deterministic', () => {
-  assert.equal(assess([cat(0.4)]).verdict, 'possible');
-  assert.equal(assess([cat(0.7)]).verdict, 'detected');
-  assert.equal(assess([cat(0.39)]).verdict, 'none');
+test('groups tabby and tiger scores without inventing confidence', () => {
+  const s = summarize([pred('tabby, tabby cat', .4), pred('tiger cat', .3), pred('Egyptian cat', .1)]);
+  assert.ok(Math.abs(s.scores.tabby - .7) < 1e-10);
+  assert.ok(Math.abs(s.total - .8) < 1e-10);
 });
-test('non-cat objects are not called cats', () => {
-  assert.equal(assess([{ class: 'dog', score: 0.99, bbox: box }]).verdict, 'none');
+test('deduplicates identical label outputs', () => {
+  const s = summarize([pred('tabby', .5), pred('tabby', .5)]);
+  assert.equal(s.total, .5);
 });
-test('empty detections are not proof of cat absence', () => {
-  const result = assess([]);
-  assert.equal(result.verdict, 'none');
-  assert.equal(result.topScore, null);
+test('strong cat appearance remains a guess, not verified breed', () => {
+  const a = assessViews([[pred('tabby', .72), pred('dog', .1)]]);
+  assert.equal(a.verdict, 'appearance-guess');
+  assert.equal(a.best.id, 'tabby');
+  assert.equal(a.best.score, .72);
 });
-test('multiple cats are ranked by strongest detection', () => {
-  const result = assess([cat(0.5), cat(0.9), { class: 'dog', score: 0.99, bbox: box }]);
-  assert.equal(result.cats.length, 2);
-  assert.equal(result.topScore, 0.9);
+test('averages rather than adding across views', () => {
+  const a = assessViews([[pred('tabby', .72)], [pred('tabby', .48)], [pred('tabby', .60)]]);
+  assert.ok(Math.abs(a.best.score - .60) < 1e-10);
+  assert.equal(a.agreeingViews, 3);
 });
-test('invalid model outputs are excluded', () => {
-  const result = assess([null, cat(NaN), cat(2), { class: 'cat', score: 1, bbox: [] }, cat(0.8)]);
-  assert.equal(result.cats.length, 1);
-  assert.equal(result.verdict, 'detected');
+test('disagreeing views produce an uncertain result', () => {
+  const a = assessViews([[pred('tabby', .5)], [pred('Siamese cat', .6)], [pred('Persian cat', .6)]]);
+  assert.equal(a.verdict, 'uncertain');
 });
-test('a non-array argument is an error, not a negative detection', () => {
-  assert.throws(() => assess(null), TypeError);
+test('no cat signals do not turn dogs into cats', () => {
+  const a = assessViews([[pred('golden retriever', .95)]]);
+  assert.equal(a.verdict, 'no-cat-signal');
+});
+test('rejects missing prediction arrays', () => {
+  assert.throws(() => assessViews([]), TypeError);
+});
+test('rejects invalid scores without crashing', () => {
+  const a = assessViews([[pred('tabby', NaN), pred('Siamese cat', 2)]]);
+  assert.equal(a.verdict, 'no-cat-signal');
 });

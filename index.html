@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f9d7ed">
   <title>Little Animal Identifier 🐾</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=20261024b">
 </head>
 <body>
   <main class="app">
@@ -13,8 +13,8 @@
     <h1>Little Animal Identifier 🐾</h1>
     <p class="intro">Back to our original animal classifier! Compare its guess with an optional closer view of your animal.</p>
     <section class="panel" aria-label="Image classification">
-      <label class="upload" for="photo">Choose a photo <span>JPG, PNG, or WebP · up to 10 MB</span></label>
-      <input id="photo" type="file" accept="image/jpeg,image/png,image/webp">
+      <label class="upload" for="photo">Choose a photo <span>Choose from Photos · up to 10 MB</span></label>
+      <input id="photo" type="file" accept="image/*">
       <div class="preview-wrap">
         <div class="photo-stage">
           <img id="preview" alt="Your selected photo" hidden>
@@ -27,11 +27,11 @@
     </section>
     <p class="intro"><a href="coat-lab/">✨ Try Cat Coat Lab — experimental fur color and pattern identifier →</a></p>
     <p class="note">The original MobileNet classifier remains the baseline. A centered close-up is an optional second prediction, not a proven accuracy improvement. Scores are model outputs, not measured accuracy or verified breed probabilities. Your photo is processed in your browser, not uploaded to our server. Internet is required to download the AI libraries and model weights.</p>
-    <footer>Made with curiosity 💜</footer>
+    <footer>Made with curiosity 💜 · Photo-upload fix v4.1</footer>
   </main>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.1/dist/mobilenet.min.js"></script>
-  <script src="cat-logic.js"></script>
-  <script src="app.js"></script>
+  <script src="cat-logic.js?v=20261024b"></script>
+  <script src="app.js?v=20261024b"></script>
 </body>
 </html>

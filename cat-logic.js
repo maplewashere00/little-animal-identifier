@@ -1,49 +1,83 @@
 'use strict';
-// Transparent, intentionally conservative decision rules. These thresholds
-// are starting guesses, NOT calibrated precision or accuracy guarantees.
+// Interpret MobileNet's existing ImageNet categories without inflating scores.
+// A tabby is a coat pattern; none of these labels verifies a pedigree.
 (function (root, factory) {
   const api = factory();
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (root) root.CatLogic = api;
 })(typeof globalThis !== 'undefined' ? globalThis : undefined, function () {
-  const POSSIBLE_THRESHOLD = 0.4;
-  const STRONG_THRESHOLD = 0.7;
+  const TYPES = Object.freeze([
+    { id: 'tabby', label: 'Tabby-patterned cat', names: ['tabby', 'tabby cat', 'tiger cat'], note: 'Tabby is a coat pattern, not a breed.' },
+    { id: 'siamese', label: 'Siamese-like cat', names: ['siamese cat'], note: 'A resemblance, not proof of breed.' },
+    { id: 'persian', label: 'Persian-like cat', names: ['persian cat'], note: 'A resemblance, not proof of breed.' },
+    { id: 'shorthair', label: 'Short-haired cat appearance', names: ['egyptian cat'], note: 'MobileNet calls this “Egyptian cat”; it does not verify an Egyptian Mau.' }
+  ]);
+  const MIN_CAT_SUPPORT = 0.2;
+  const MIN_TYPE_SUPPORT = 0.15;
 
-  function assess(detections) {
-    if (!Array.isArray(detections)) throw new TypeError('Expected a detection list');
-    const cats = detections
-      .filter(item => item && item.class === 'cat' &&
-        Number.isFinite(item.score) && item.score >= POSSIBLE_THRESHOLD && item.score <= 1 &&
-        Array.isArray(item.bbox) && item.bbox.length === 4 &&
-        item.bbox.every(Number.isFinite))
+  function appearanceId(name) {
+    if (typeof name !== 'string') return null;
+    const aliases = name.toLowerCase().split(',').map(part => part.trim());
+    const found = TYPES.find(type => type.names.some(alias => aliases.includes(alias)));
+    return found ? found.id : null;
+  }
+
+  function summarize(predictions) {
+    if (!Array.isArray(predictions)) throw new TypeError('Predictions must be an array');
+    const scores = Object.fromEntries(TYPES.map(type => [type.id, 0]));
+    const seen = new Set();
+    for (const prediction of predictions) {
+      if (!prediction || typeof prediction.className !== 'string' ||
+          !Number.isFinite(prediction.probability) ||
+          prediction.probability < 0 || prediction.probability > 1) continue;
+      const name = prediction.className.toLowerCase().trim();
+      if (seen.has(name)) continue;
+      seen.add(name);
+      const id = appearanceId(name);
+      if (id) scores[id] += prediction.probability;
+    }
+    const ranking = TYPES.map(type => ({ ...type, score: scores[type.id] }))
       .sort((a, b) => b.score - a.score);
-    if (cats.length === 0) return { verdict: 'none', cats, topScore: null };
+    const total = Math.min(1, Object.values(scores).reduce((sum, score) => sum + score, 0));
+    return { scores, total, ranking, best: ranking[0] };
+  }
+
+  // Different transformations of the same photo are NOT independent evidence.
+  // We average the actual model category scores, rather than rescaling them
+  // to create an artificially larger "confidence" number.
+  function assessViews(predictionSets) {
+    if (!Array.isArray(predictionSets) || predictionSets.length === 0) {
+      throw new TypeError('At least one set of predictions is required');
+    }
+    const views = predictionSets.map(summarize);
+    const average = Object.fromEntries(TYPES.map(type => [
+      type.id,
+      views.reduce((sum, view) => sum + view.scores[type.id], 0) / views.length
+    ]));
+    const ranked = TYPES.map(type => ({ ...type, score: average[type.id] }))
+      .sort((a, b) => b.score - a.score);
+    const catSupport = Math.min(1, Object.values(average).reduce((sum, score) => sum + score, 0));
+    const best = ranked[0];
+    const agreeingViews = views.filter(view =>
+      view.best.id === best.id && view.best.score >= MIN_TYPE_SUPPORT).length;
+    const threshold = predictionSets.length === 1 ? 1 : Math.floor(predictionSets.length / 2) + 1;
+    const enoughAgreement = agreeingViews >= threshold;
+    const verdict = catSupport < MIN_CAT_SUPPORT
+      ? 'no-cat-signal'
+      : best.score >= MIN_TYPE_SUPPORT && enoughAgreement
+        ? 'appearance-guess'
+        : 'uncertain';
     return {
-      verdict: cats[0].score >= STRONG_THRESHOLD ? 'detected' : 'possible',
-      cats,
-      topScore: cats[0].score
+      verdict,
+      best,
+      alternatives: ranked.slice(1),
+      catSupport,
+      agreeingViews,
+      viewCount: views.length,
+      original: views[0],
+      views
     };
   }
 
-  // MobileNet's ImageNet classes contain only a few cat looks.
-  // These are NOT reliable breed diagnoses (tabby is a coat pattern).
-  function catLook(predictions) {
-    if (!Array.isArray(predictions)) throw new TypeError('Expected classification predictions');
-    const looks = [
-      { match: /\btabby\b|\btiger cat\b/, label: 'Tabby-patterned cat', note: 'Tabby is a coat pattern, not a breed.' },
-      { match: /\bsiamese cat\b|^siamese\b/, label: 'Siamese-like cat', note: 'This is a resemblance, not breed verification.' },
-      { match: /\bpersian cat\b|^persian\b/, label: 'Persian-like cat', note: 'This is a resemblance, not breed verification.' },
-      { match: /\begyptian cat\b/, label: 'Short-haired cat appearance', note: 'The model calls this category “Egyptian cat”; it does not verify an Egyptian Mau breed.' }
-    ];
-    for (const prediction of predictions.slice(0, 5)) {
-      if (!prediction || typeof prediction.className !== 'string' ||
-          !Number.isFinite(prediction.probability) ||
-          prediction.probability < 0.15 || prediction.probability > 1) continue;
-      const name = prediction.className.toLowerCase().trim();
-      const match = looks.find(look => look.match.test(name));
-      if (match) return { label: match.label, note: match.note, score: prediction.probability };
-    }
-    return null;
-  }
-  return { assess, catLook, POSSIBLE_THRESHOLD, STRONG_THRESHOLD };
+  return { TYPES, appearanceId, summarize, assessViews, MIN_CAT_SUPPORT, MIN_TYPE_SUPPORT };
 });

@@ -12,6 +12,15 @@
     { id: 'persian', label: 'Persian-like cat', names: ['persian cat'], note: 'A resemblance, not proof of breed.' },
     { id: 'shorthair', label: 'Short-haired cat appearance', names: ['egyptian cat'], note: 'MobileNet calls this “Egyptian cat”; it does not verify an Egyptian Mau.' }
   ]);
+  // Friendly language describes resemblance, NOT an authenticated breed.
+  // We preserve MobileNet's unmodified category name and raw score in the UI.
+  const FRIENDLY = Object.freeze({
+    tabby: 'Tabby-patterned domestic cat',
+    siamese: 'Siamese-like domestic cat',
+    persian: 'Persian-like domestic cat',
+    shorthair: 'Short-haired domestic cat appearance'
+  });
+
   const MIN_CAT_SUPPORT = 0.2;
   const MIN_TYPE_SUPPORT = 0.15;
 
@@ -20,6 +29,52 @@
     const aliases = name.toLowerCase().split(',').map(part => part.trim());
     const found = TYPES.find(type => type.names.some(alias => aliases.includes(alias)));
     return found ? found.id : null;
+  }
+
+  function friendlyCategory(className) {
+    if (typeof className !== 'string') throw new TypeError('Class name must be text');
+    const id = appearanceId(className);
+    return {
+      display: id ? FRIENDLY[id] : className,
+      original: className,
+      isCatAppearance: Boolean(id),
+      appearanceId: id,
+      altered: Boolean(id)
+    };
+  }
+
+  // Compare top-label stability across correlated transformations of ONE photo.
+  // There is no model retraining or synthetic increase in the raw scores.
+  function compareTopViews(predictionSets) {
+    if (!Array.isArray(predictionSets) || predictionSets.length < 2)
+      throw new TypeError('At least two views required');
+    const top = predictionSets.map(predictions => {
+      if (!Array.isArray(predictions) || !predictions.length) throw new TypeError('View has no predictions');
+      const prediction = predictions[0];
+      if (!prediction || typeof prediction.className !== 'string' ||
+          !Number.isFinite(prediction.probability) ||
+          prediction.probability < 0 || prediction.probability > 1)
+        throw new TypeError('Invalid top prediction');
+      return { ...friendlyCategory(prediction.className), score: prediction.probability };
+    });
+    const allSameLabel = top.every(view => view.original === top[0].original);
+    const catTopViews = top.filter(view => view.isCatAppearance).length;
+    const allDomesticCatTop = catTopViews === top.length;
+    const allSameCatAppearance = allDomesticCatTop &&
+      top.every(view => view.appearanceId === top[0].appearanceId);
+    let summary;
+    if (allSameLabel) {
+      summary = 'All views favored the same model label.';
+    } else if (allSameCatAppearance) {
+      summary = 'All views favored the same kind of domestic-cat appearance, but used different model labels.';
+    } else if (allDomesticCatTop) {
+      summary = 'All views favored domestic-cat appearances, but disagreed about the type or pattern.';
+    } else if (catTopViews > 0) {
+      summary = 'Only some views had a domestic-cat appearance as their top guess. The result is sensitive to framing.';
+    } else {
+      summary = 'Different views gave different top labels. The result is sensitive to framing.';
+    }
+    return { top, allSameLabel, catTopViews, allDomesticCatTop, allSameCatAppearance, summary };
   }
 
   function summarize(predictions) {
@@ -108,6 +163,6 @@
     return { label: overview.best.label, note: overview.best.note, score: overview.best.score };
   }
 
-  return { TYPES, appearanceId, summarize, assessViews, assess, catLook,
+  return { TYPES, appearanceId, friendlyCategory, compareTopViews, summarize, assessViews, assess, catLook,
     MIN_CAT_SUPPORT, MIN_TYPE_SUPPORT, POSSIBLE_THRESHOLD, STRONG_THRESHOLD };
 });

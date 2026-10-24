@@ -1,41 +1,37 @@
-# Little Animal Identifier 🐾 — Cat Detective v2
+# Little Animal Identifier 🐾 — enhanced cat appearance analysis
 
-A browser-only animal identifier for GitHub Pages, with two modes:
-
-- **Cat Detective:** detects cats in photos using [TensorFlow.js COCO-SSD](https://github.com/tensorflow/tfjs-models/tree/master/coco-ssd) with a lightweight MobileNet v2 backbone. Draws boxes around possible cats. Scores at least 0.70 display **Cat detected**; scores 0.40–0.69 display **Possible cat — uncertain**; otherwise displays **No cat detected** (which does **not** rule out a cat). Thresholds are uncalibrated starting points, not measured precision values.
-- **Identify anything:** preserves the original [MobileNet v2](https://github.com/tensorflow/tfjs-models/tree/master/mobilenet) top-five ImageNet predictions.
-
-When Cat Detective finds a possible cat, it also crops the highest-scoring cat and uses MobileNet's limited cat labels to suggest an **appearance** (tabby-patterned, Siamese-like, Persian-like, or short-haired). These are not verified breeds, and the model may say the type is unclear. If multiple cats are present, the appearance guess applies only to the highest-scoring detection.\n\nModels load on demand after choosing an image, with no API key and no server-side photo upload. Network access is needed to fetch JavaScript libraries and the model weights. External providers may log normal download request metadata.
+Our original [MobileNet v2](https://github.com/tensorflow/tfjs-models/tree/master/mobilenet) animal classifier is the **default** again. It identifies many animal categories, and when it sees domestic-cat labels it performs two extra views (a horizontal flip and a small center crop) to compare appearance guesses.
 
 ## Live website
 
 https://maplewashere00.github.io/little-animal-identifier/
 
-## Run locally
+## What changed
 
-Serve the project folder with `python3 -m http.server 8000`, then open `http://localhost:8000`. Select a JPG, PNG, or WebP photo under 10MB.
+- **Identify animal + cat type (default):** keeps the original top-five general-animal predictions, requests the model's top 15 internal categories, and combines related cat labels (such as `tabby` and `tiger cat`) to assess cat appearances. If cat-category support is at least 8% on the original view, it also evaluates a flipped view and a small center crop.
+- **Detect cat locations (optional):** keeps the experimental COCO-SSD cat-box detector from v2. It answers whether/where it sees cats, not their type.
+- Shows the **original top guess and raw score** alongside combined cat-category support, average appearance score across views, and whether the views agree. Different views of the same photo are not independent evidence.
 
-## Run offline logic tests
+## Important limits
 
-`node --test tests/cat-logic.test.js`
+**We have not demonstrated an increase in real-world accuracy yet.** Combining cat categories may make the appearance information more useful, but it does not make the model better trained. The combined score is **not a calibrated probability** that a cat or breed identification is correct. We do not artificially boost confidence numbers.
 
-These tests check decision thresholds and edge cases using *synthetic model predictions*. They do not establish real-world cat recognition accuracy.
+The original model knows only a few cat appearance classes: tabby-patterned, Siamese-like, Persian-like, and an ImageNet class called “Egyptian cat” (shown as short-haired appearance). **Tabby is a coat pattern, not a breed.** Many cats cannot be reliably assigned a breed from a photo. The tool can return “unclear.” For true breed classification we'd need a specialized model trained and independently evaluated on appropriately labeled cat photos.
 
-## Evaluate reliability before claiming high accuracy
+Photos are processed locally in the browser. The model and libraries download from third-party CDNs, so internet is required and those providers may receive normal download request metadata. No backend, API key, or paid service is needed.
 
-Collect consented, correctly labeled, diverse test photos that were **not used for tuning**: cats of different breeds/ages/lighting/poses, cats mixed with dogs, distant cats, dogs, stuffed animals, foxes, frogs, and pictures without animals. Score **precision** (of photos labeled 'Cat detected', what fraction actually contain cats), **recall** (of photos with cats, what fraction are detected), false positive/false negative counts, plus phone performance. Include ambiguous cases and do not cherry-pick examples. Tune the two cat thresholds only using a *separate* development set, and retest on the untouched evaluation set.
+## Run locally and test
 
-See [EVALUATION.md](EVALUATION.md) for a simple testing worksheet and metric definitions.
+Serve the folder with `python3 -m http.server 8000` and open `http://localhost:8000`. Choose a JPG, PNG, or WebP photo under 10 MB.
 
-If the detector is not good enough, evaluate a fine-tuned cat vs. non-cat model. No model can be honestly advertised as 100% accurate on all images.
+Run the decision tests using Node.js:
 
-## Safety, privacy, and limitations
+```sh
+node --test tests/cat-logic.test.js
+```
 
-- Scores are detector confidence values, **not** the percentage chance that the prediction is correct.
-- Nothing is guaranteed, especially small/occluded cats and photographs outside the model's training distribution.
-- This is a fun educational project, not a professional species identification or safety tool.
-- The model's weights and TF.js libraries load from third-party CDNs, so a connection is needed for the first load.
+These use synthetic predictions; they cannot establish real-photo accuracy. See [EVALUATION.md](EVALUATION.md) for precision, recall, and held-out evaluation guidance.
 
 ## License
 
-MIT — see LICENSE.
+MIT — see [LICENSE](LICENSE).

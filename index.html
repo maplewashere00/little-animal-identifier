@@ -13,17 +13,11 @@
     <h1>Little Animal Identifier 🐾</h1>
     <p class="intro">Back to our original animal classifier! Compare its guess with an optional closer view of your animal.</p>
     <section class="panel" aria-label="Image classification">
-      <fieldset class="modes">
-        <legend>What should we look for?</legend>
-        <label><input type="radio" name="mode" value="cat"> 🐱 Detect cat locations</label>
-        <label><input type="radio" name="mode" value="general" checked> 🌎 Identify animal</label>
-      </fieldset>
       <label class="upload" for="photo">Choose a photo <span>JPG, PNG, or WebP · up to 10 MB</span></label>
       <input id="photo" type="file" accept="image/jpeg,image/png,image/webp">
       <div class="preview-wrap">
         <div class="photo-stage">
           <img id="preview" alt="Your selected photo" hidden>
-          <canvas id="overlay" aria-hidden="true" hidden></canvas>
         </div>
       </div>
       <label class="focus-option"><input id="focus" type="checkbox"> 🔎 Also check a centered close-up (experimental)</label>
@@ -32,12 +26,11 @@
       <div id="results" class="results" aria-live="polite" hidden></div>
     </section>
     <p class="intro"><a href="coat-lab/">✨ Try Cat Coat Lab — experimental fur color and pattern identifier →</a></p>
-    <p class="note">The original MobileNet classifier remains the baseline. A centered close-up is an optional second prediction, not a proven accuracy improvement. Scores are model outputs, not measured accuracy or verified breed probabilities. Cat detection boxes are optional. Your photo is processed in your browser, not uploaded to our server. Internet is required to download the AI libraries and model weights.</p>
+    <p class="note">The original MobileNet classifier remains the baseline. A centered close-up is an optional second prediction, not a proven accuracy improvement. Scores are model outputs, not measured accuracy or verified breed probabilities. Your photo is processed in your browser, not uploaded to our server. Internet is required to download the AI libraries and model weights.</p>
     <footer>Made with curiosity 💜</footer>
   </main>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.1/dist/mobilenet.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
   <script src="cat-logic.js"></script>
   <script src="app.js"></script>
 </body>

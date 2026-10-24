@@ -5,7 +5,7 @@ A browser-only animal identifier for GitHub Pages, with two modes:
 - **Cat Detective:** detects cats in photos using [TensorFlow.js COCO-SSD](https://github.com/tensorflow/tfjs-models/tree/master/coco-ssd) with a lightweight MobileNet v2 backbone. Draws boxes around possible cats. Scores at least 0.70 display **Cat detected**; scores 0.40–0.69 display **Possible cat — uncertain**; otherwise displays **No cat detected** (which does **not** rule out a cat). Thresholds are uncalibrated starting points, not measured precision values.
 - **Identify anything:** preserves the original [MobileNet v2](https://github.com/tensorflow/tfjs-models/tree/master/mobilenet) top-five ImageNet predictions.
 
-Models load on demand after choosing an image, with no API key and no server-side photo upload. Network access is needed to fetch JavaScript libraries and the model weights. External providers may log normal download request metadata.
+When Cat Detective finds a possible cat, it also crops the highest-scoring cat and uses MobileNet's limited cat labels to suggest an **appearance** (tabby-patterned, Siamese-like, Persian-like, or short-haired). These are not verified breeds, and the model may say the type is unclear. If multiple cats are present, the appearance guess applies only to the highest-scoring detection.\n\nModels load on demand after choosing an image, with no API key and no server-side photo upload. Network access is needed to fetch JavaScript libraries and the model weights. External providers may log normal download request metadata.
 
 ## Live website
 

@@ -95,26 +95,62 @@ async function showGeneralResult(predictions, classifier, useFocus) {
   results.hidden = false;
 }
 
+// Handle photo selection independently of the model download. iPhone photo
+// libraries may supply HEIC/HEIF images even when a JPG is expected.
+let selectionId = 0;
 input.addEventListener('change', () => {
+  const thisSelection = ++selectionId;
   clearResults();
   readyPhoto = false;
   updateButton();
   preview.hidden = true;
+  preview.onload = null;
+  preview.onerror = null;
+  preview.removeAttribute('src');
   if (imageUrl) { URL.revokeObjectURL(imageUrl); imageUrl = null; }
+
   const file = input.files && input.files[0];
   if (!file) { setStatus('Choose a photo to begin.'); return; }
-  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 10 * 1024 * 1024) {
-    setStatus('Please choose a JPG, PNG, or WebP photo under 10 MB.'); return;
+  if (file.size > 10 * 1024 * 1024) {
+    setStatus('This photo is over 10 MB. Please choose a smaller photo.');
+    return;
   }
-  imageUrl = URL.createObjectURL(file);
-  preview.onload = () => {
-    readyPhoto = true;
+  const knownImage = file.type.startsWith('image/') ||
+    /\.(jpe?g|png|webp|heic|heif)$/i.test(file.name);
+  if (!knownImage) {
+    setStatus('Please choose an image from your photo library.');
+    return;
+  }
+
+  setStatus('Opening your photo…');
+  try {
+    imageUrl = URL.createObjectURL(file);
+    preview.onload = () => {
+      if (thisSelection !== selectionId) return;
+      if (!preview.naturalWidth || !preview.naturalHeight) {
+        readyPhoto = false;
+        updateButton();
+        setStatus('This image has no readable picture data. Try another photo.');
+        return;
+      }
+      readyPhoto = true;
+      updateButton();
+      setStatus('Photo ready! Tap Check photo.');
+    };
+    preview.onerror = () => {
+      if (thisSelection !== selectionId) return;
+      readyPhoto = false;
+      updateButton();
+      setStatus('Could not display this photo. If it is HEIC, try sharing it as a JPG.');
+    };
+    preview.src = imageUrl;
+    preview.hidden = false;
+  } catch (error) {
+    console.error('Could not preview image', error);
+    readyPhoto = false;
     updateButton();
-    setStatus('Photo ready! Tap Check photo.');
-  };
-  preview.onerror = () => { readyPhoto = false; updateButton(); setStatus('Could not read this image. Try another.'); };
-  preview.src = imageUrl;
-  preview.hidden = false;
+    setStatus('Could not open this photo. Please try another.');
+  }
 });
 
 button.addEventListener('click', async () => {

@@ -11,12 +11,12 @@
   <main class="app">
     <div class="eyebrow">A tiny machine-learning experiment ✨</div>
     <h1>Little Animal Identifier 🐾</h1>
-    <p class="intro">Meet <strong>Cat Detective</strong>! Look for cats in a photo, or switch to the original animal identifier.</p>
+    <p class="intro">The original animal classifier is back, now with extra cat appearance analysis. Try Lucy again!</p>
     <section class="panel" aria-label="Image classification">
       <fieldset class="modes">
         <legend>What should we look for?</legend>
-        <label><input type="radio" name="mode" value="cat" checked> 🐱 Cat Detective</label>
-        <label><input type="radio" name="mode" value="general"> 🌎 Identify anything</label>
+        <label><input type="radio" name="mode" value="cat"> 🐱 Detect cat locations</label>
+        <label><input type="radio" name="mode" value="general" checked> 🌎 Identify animal + cat type</label>
       </fieldset>
       <label class="upload" for="photo">Choose a photo <span>JPG, PNG, or WebP · up to 10 MB</span></label>
       <input id="photo" type="file" accept="image/jpeg,image/png,image/webp">
@@ -30,7 +30,7 @@
       <button id="identify" disabled>Check photo</button>
       <div id="results" class="results" aria-live="polite" hidden></div>
     </section>
-    <p class="note">Cat Detective searches for cats using an object detector; it may miss real cats or mistake other objects for cats. Its scores are not calibrated accuracy percentages. A missing detection doesn't prove no cat is present. Your photo is processed in your browser, not uploaded to our server. Internet is required to download the AI libraries and model weights.</p>
+    <p class="note">The original classifier predicts animal categories and checks cat appearances across multiple views. Scores are model outputs, not measured accuracy or verified breed probabilities. Cat detection boxes are optional. Your photo is processed in your browser, not uploaded to our server. Internet is required to download the AI libraries and model weights.</p>
     <footer>Made with curiosity 💜</footer>
   </main>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>

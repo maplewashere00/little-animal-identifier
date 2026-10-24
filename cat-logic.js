@@ -79,5 +79,35 @@
     };
   }
 
-  return { TYPES, appearanceId, summarize, assessViews, MIN_CAT_SUPPORT, MIN_TYPE_SUPPORT };
+  // Cat Detective is a separate object detector, not the ImageNet cat-look
+  // classifier above. Keep these compatibility helpers with explicit limits.
+  const POSSIBLE_THRESHOLD = 0.4;
+  const STRONG_THRESHOLD = 0.7;
+
+  function assess(detections) {
+    if (!Array.isArray(detections)) throw new TypeError('Detections must be an array');
+    const cats = detections.filter(detection =>
+      detection && detection.class === 'cat' &&
+      Number.isFinite(detection.score) && detection.score >= POSSIBLE_THRESHOLD &&
+      detection.score <= 1 &&
+      Array.isArray(detection.bbox) && detection.bbox.length === 4 &&
+      detection.bbox.every(Number.isFinite) &&
+      detection.bbox[2] > 0 && detection.bbox[3] > 0
+    ).sort((a, b) => b.score - a.score);
+    const topScore = cats.length ? cats[0].score : 0;
+    return {
+      verdict: !cats.length ? 'none' : topScore >= STRONG_THRESHOLD ? 'detected' : 'possible',
+      topScore,
+      cats
+    };
+  }
+
+  function catLook(predictions) {
+    const overview = summarize(predictions);
+    if (overview.total < MIN_CAT_SUPPORT || overview.best.score < MIN_TYPE_SUPPORT) return null;
+    return { label: overview.best.label, note: overview.best.note, score: overview.best.score };
+  }
+
+  return { TYPES, appearanceId, summarize, assessViews, assess, catLook,
+    MIN_CAT_SUPPORT, MIN_TYPE_SUPPORT, POSSIBLE_THRESHOLD, STRONG_THRESHOLD };
 });

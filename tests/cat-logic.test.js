@@ -68,3 +68,42 @@ test('optional cropped cat appearance guess is available', () => {
   assert.equal(catLook([pred('tabby, tabby cat', .7)]).label, 'Tabby-patterned cat');
   assert.equal(catLook([pred('golden retriever', .8)]), null);
 });
+
+test('Egyptian cat has a friendly appearance label but preserves original label', () => {
+  const { friendlyCategory } = require('../cat-logic.js');
+  const mapped = friendlyCategory('Egyptian cat');
+  assert.equal(mapped.display, 'Short-haired domestic cat appearance');
+  assert.equal(mapped.original, 'Egyptian cat');
+  assert.equal(mapped.isCatAppearance, true);
+});
+test('unknown animals keep their original model label', () => {
+  const { friendlyCategory } = require('../cat-logic.js');
+  const mapped = friendlyCategory('golden retriever');
+  assert.equal(mapped.display, 'golden retriever');
+  assert.equal(mapped.altered, false);
+});
+test('three views agree when they predict the same cat label', () => {
+  const { compareTopViews } = require('../cat-logic.js');
+  const r = compareTopViews([[pred('Egyptian cat', .56)], [pred('Egyptian cat', .45)], [pred('Egyptian cat', .61)]]);
+  assert.equal(r.allSameLabel, true);
+  assert.equal(r.allDomesticCatTop, true);
+  assert.equal(r.top[0].score, .56);
+});
+test('different domestic cat appearances are flagged as disagreement', () => {
+  const { compareTopViews } = require('../cat-logic.js');
+  const r = compareTopViews([[pred('Egyptian cat', .56)], [pred('tabby, tabby cat', .74)], [pred('Egyptian cat', .60)]]);
+  assert.equal(r.allSameLabel, false);
+  assert.equal(r.allDomesticCatTop, true);
+  assert.match(r.summary, /disagreed/);
+});
+test('noncat result is not turned into a cat', () => {
+  const { compareTopViews } = require('../cat-logic.js');
+  const r = compareTopViews([[pred('Egyptian cat', .56)], [pred('golden retriever', .80)]]);
+  assert.equal(r.allDomesticCatTop, false);
+  assert.equal(r.catTopViews, 1);
+});
+test('invalid comparison predictions fail closed', () => {
+  const { compareTopViews } = require('../cat-logic.js');
+  assert.throws(() => compareTopViews([[pred('Egyptian cat', .56)]]), TypeError);
+  assert.throws(() => compareTopViews([[pred('Egyptian cat', .56)], [pred('tabby', NaN)]]), TypeError);
+});

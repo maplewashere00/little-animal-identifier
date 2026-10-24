@@ -130,55 +130,57 @@ async function showCatResult(detections) {
   }
 }
 
-async function showGeneralResult(predictions, classifier) {
+function makeCenterView(image) {
+  const inset = 0.14;
+  const cropX = Math.round(image.naturalWidth * inset);
+  const cropY = Math.round(image.naturalHeight * inset);
+  const width = image.naturalWidth - 2 * cropX;
+  const height = image.naturalHeight - 2 * cropY;
+  if (width < 1 || height < 1) throw new Error('Photo too small for close-up');
+  const scale = Math.min(1, 384 / Math.max(width, height));
+  const view = document.createElement('canvas');
+  view.width = Math.max(1, Math.round(width * scale));
+  view.height = Math.max(1, Math.round(height * scale));
+  const ctx = view.getContext('2d');
+  if (!ctx) throw new Error('Canvas unavailable');
+  ctx.drawImage(image, cropX, cropY, width, height, 0, 0, view.width, view.height);
+  return view;
+}
+
+async function showGeneralResult(predictions, classifier, useFocus) {
   if (!Array.isArray(predictions) || predictions.length === 0) throw new Error('No predictions');
   const best = predictions[0];
   addLine(results, 'h2', `Best guess: ${best.className}`, 'guess');
-  addLine(results, 'p', `Model score: ${percent(best.probability)} (not a calibrated probability of being correct)`);
-  if (best.probability < 0.35) addLine(results, 'p', 'Low score: the model may be unsure.', 'warning');
+  addLine(results, 'p', `Original photo model score: ${percent(best.probability)}. This is not measured accuracy.`);
+  if (best.probability < 0.35) addLine(results, 'p', 'The model is less decisive about this photo.', 'warning');
   addLine(results, 'h3', 'Other possibilities');
   const list = document.createElement('ol');
-  for (const prediction of predictions.slice(1)) {
+  for (const prediction of predictions.slice(1, 5)) {
     addLine(list, 'li', `${prediction.className} — ${percent(prediction.probability)}`);
   }
   results.appendChild(list);
-  addLine(results, 'h3', 'Cat appearance analysis');
-  const views = [predictions];
-  const firstPass = CatLogic.summarize(predictions);
-  if (firstPass.total >= 0.08) {
-    setStatus('Checking cat appearance across three views…');
-    const image = preview;
-    const makeView = (flip, inset) => {
-      const canvas = document.createElement('canvas');
-      const cropX = Math.round(image.naturalWidth * inset);
-      const cropY = Math.round(image.naturalHeight * inset);
-      const width = image.naturalWidth - 2 * cropX;
-      const height = image.naturalHeight - 2 * cropY;
-      const scale = Math.min(1, 384 / Math.max(width, height));
-      canvas.width = Math.max(1, Math.round(width * scale));
-      canvas.height = Math.max(1, Math.round(height * scale));
-      const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error('Canvas unavailable');
-      if (flip) { ctx.translate(canvas.width, 0); ctx.scale(-1, 1); }
-      ctx.drawImage(image, cropX, cropY, width, height, 0, 0, canvas.width, canvas.height);
-      return canvas;
-    };
-    views.push(await classifier.classify(makeView(true, 0), 15));
-    views.push(await classifier.classify(makeView(false, 0.08), 15));
+
+  const catSummary = CatLogic.summarize(predictions);
+  if (catSummary.total > 0) {
+    addLine(results, 'h3', 'Cat appearance clues');
+    addLine(results, 'p', `Top domestic-cat appearance: ${catSummary.best.label} — ${percent(catSummary.best.score)} raw grouped category score.`);
+    addLine(results, 'p', 'Tabby describes a coat pattern, not a breed. These ImageNet labels cannot reliably determine every cat color or pattern.', 'disclaimer');
   }
-  const assessment = CatLogic.assessViews(views);
-  if (assessment.verdict === 'appearance-guess') {
-    addLine(results, 'p', 'Best appearance guess: ' + assessment.best.label, 'guess');
-    addLine(results, 'p', assessment.best.note);
-  } else if (assessment.verdict === 'uncertain') {
-    addLine(results, 'p', 'Cat appearance unclear — the different views do not agree strongly enough.');
-  } else {
-    addLine(results, 'p', 'No strong domestic-cat signal in the model labels. This does not rule out a cat.');
-  }
-  addLine(results, 'p', 'Combined cat-category support: ' + percent(assessment.catSupport) + '. This combines related model labels, not a calibrated probability of being correct.');
-  if (assessment.verdict !== 'no-cat-signal') {
-    addLine(results, 'p', assessment.best.label + ' score averaged across views: ' + percent(assessment.best.score) + '; leading category in ' + assessment.agreeingViews + ' of ' + assessment.viewCount + ' views.');
-    addLine(results, 'p', 'Views come from the same photo, so agreement is not independent evidence. Tabby is a coat pattern, not a breed.', 'disclaimer');
+
+  if (useFocus) {
+    setStatus('Checking the centered close-up…');
+    try {
+      const closePredictions = await classifier.classify(makeCenterView(preview), 5);
+      if (!closePredictions.length) throw new Error('No close-up predictions');
+      const closeBest = closePredictions[0];
+      addLine(results, 'h3', 'Centered close-up comparison');
+      addLine(results, 'p', `Close-up guess: ${closeBest.className} — ${percent(closeBest.probability)} model score.`);
+      addLine(results, 'p', 'This crops 14% from each edge. It may help when the animal is centered, but may cut off animals near the edges. Compare the guesses; a higher score is not automatically a more correct answer.', 'disclaimer');
+      if (closeBest.className !== best.className) addLine(results, 'p', 'The two views disagree. Try a clearer picture or a closer photo.', 'warning');
+    } catch (error) {
+      console.warn('Optional centered close-up failed', error);
+      addLine(results, 'p', 'Could not analyze the optional close-up. The original result above is still available.', 'warning');
+    }
   }
   results.hidden = false;
 }
@@ -224,7 +226,7 @@ button.addEventListener('click', async () => {
       await showCatResult(detections);
     } else {
       const predictions = await model.classify(preview, 15);
-      await showGeneralResult(predictions, model);
+      await showGeneralResult(predictions, model, document.getElementById('focus').checked);
     }
     setStatus('Done! Try another picture.');
   } catch (error) {

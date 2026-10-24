@@ -30,3 +30,5 @@ button:not(:disabled):hover { background: #792b64; }
 .disclaimer { font-size: .82rem; color: #705a71; }
 .note, footer { color: #745e76; font-size: .85rem; line-height: 1.6; }
 footer { margin-top: 28px; }
+.focus-option { display: block; margin: 12px auto; color: #67536c; font-size: .9rem; cursor: pointer; }
+.focus-option input { accent-color: #963f80; }

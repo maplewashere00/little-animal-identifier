@@ -5,13 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f9d7ed">
   <title>Little Animal Identifier 🐾</title>
-  <link rel="stylesheet" href="style.css?v=20261024b">
+  <link rel="stylesheet" href="style.css?v=20261024c">
 </head>
 <body>
   <main class="app">
     <div class="eyebrow">A tiny machine-learning experiment ✨</div>
     <h1>Little Animal Identifier 🐾</h1>
-    <p class="intro">Back to our original animal classifier! Compare its guess with an optional closer view of your animal.</p>
+    <p class="intro">Back to our original animal classifier! See friendlier animal labels and optionally compare three views of the same photo.</p>
     <section class="panel" aria-label="Image classification">
       <label class="upload" for="photo">Choose a photo <span>Choose from Photos · up to 10 MB</span></label>
       <input id="photo" type="file" accept="image/*">
@@ -20,18 +20,18 @@
           <img id="preview" alt="Your selected photo" hidden>
         </div>
       </div>
-      <label class="focus-option"><input id="focus" type="checkbox"> 🔎 Also check a centered close-up (experimental)</label>
+      <label class="focus-option"><input id="focus" type="checkbox"> 🔎 Compare original, mirrored, and close-up views (experimental)</label>
       <p id="status" role="status" aria-live="polite">Choose a photo to begin.</p>
       <button id="identify" disabled>Check photo</button>
       <div id="results" class="results" aria-live="polite" hidden></div>
     </section>
     <p class="intro"><a href="coat-lab/">✨ Try Cat Coat Lab — experimental fur color and pattern identifier →</a></p>
-    <p class="note">The original MobileNet classifier remains the baseline. A centered close-up is an optional second prediction, not a proven accuracy improvement. Scores are model outputs, not measured accuracy or verified breed probabilities. Your photo is processed in your browser, not uploaded to our server. Internet is required to download the AI libraries and model weights.</p>
-    <footer>Made with curiosity 💜 · Photo-upload fix v4.1</footer>
+    <p class="note">The original MobileNet classifier remains the baseline. Optional comparisons use mirrored and centered-crop versions of the same photo, not independent accuracy evidence. Scores are model outputs, not measured accuracy or verified breed probabilities. Your photo is processed in your browser, not uploaded to our server. Internet is required to download the AI libraries and model weights.</p>
+    <footer>Made with curiosity 💜 · Cat explanations v4.2</footer>
   </main>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.1/dist/mobilenet.min.js"></script>
-  <script src="cat-logic.js?v=20261024b"></script>
-  <script src="app.js?v=20261024b"></script>
+  <script src="cat-logic.js?v=20261024c"></script>
+  <script src="app.js?v=20261024c"></script>
 </body>
 </html>

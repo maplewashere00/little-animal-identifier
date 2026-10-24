@@ -1,0 +1,10 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {COLORS,PATTERNS,evaluateRanking,makeRecord,toCSV} from '../coat-logic.js';
+const preds=(options,scores)=>options.map((c,i)=>({label:c.prompt,score:scores[i]}));
+test('color and pattern candidates are separate',()=>{assert.ok(COLORS.some(c=>c.id==='brown'));assert.ok(PATTERNS.some(c=>c.id==='tabby-stripes'));});
+test('ranks raw scores without boosting',()=>{const scores=COLORS.map(()=>.01);scores[2]=.7;scores[1]=.15;const r=evaluateRanking(preds(COLORS,scores),COLORS);assert.equal(r.best.id,'brown');assert.equal(r.best.score,.7);});
+test('flags close calls',()=>{const scores=COLORS.map(()=>.01);scores[0]=.4;scores[1]=.36;assert.equal(evaluateRanking(preds(COLORS,scores),COLORS).closeCall,true);});
+test('rejects missing duplicate and malformed outputs',()=>{const p=preds(COLORS,COLORS.map(()=>.1));assert.throws(()=>evaluateRanking(p.slice(1),COLORS));assert.throws(()=>evaluateRanking([...p.slice(0,-1),p[0]],COLORS));assert.throws(()=>evaluateRanking([{label:p[0].label,score:NaN},...p.slice(1)],COLORS));});
+test('records labels not photos',()=>{const color=evaluateRanking(preds(COLORS,COLORS.map((_,i)=>i===0?.7:.05)),COLORS);const pattern=evaluateRanking(preds(PATTERNS,PATTERNS.map((_,i)=>i===0?.7:.03)),PATTERNS);const rec=makeRecord(1,color,pattern,'Black','Striped tabby');assert.equal(rec.color_correct,'true');assert.equal('filename' in rec,false);});
+test('escapes CSV formulas',()=>{assert.match(toCSV([{sample:'=HYPERLINK(1)'}]),/"'=HYPERLINK\(1\)"/);});

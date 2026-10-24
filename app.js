@@ -40,56 +40,84 @@ async function getModel() {
   finally { loading = null; }
 }
 
-function makeCenterView(image) {
-  const inset = 0.14;
+function makeView(image, { inset = 0, flip = false } = {}) {
   const cropX = Math.round(image.naturalWidth * inset);
   const cropY = Math.round(image.naturalHeight * inset);
   const width = image.naturalWidth - 2 * cropX;
   const height = image.naturalHeight - 2 * cropY;
-  if (width < 1 || height < 1) throw new Error('Photo too small for close-up');
+  if (width < 1 || height < 1) throw new Error('Photo too small for comparison');
   const scale = Math.min(1, 384 / Math.max(width, height));
   const view = document.createElement('canvas');
   view.width = Math.max(1, Math.round(width * scale));
   view.height = Math.max(1, Math.round(height * scale));
   const ctx = view.getContext('2d');
   if (!ctx) throw new Error('Canvas unavailable');
+  if (flip) { ctx.translate(view.width, 0); ctx.scale(-1, 1); }
   ctx.drawImage(image, cropX, cropY, width, height, 0, 0, view.width, view.height);
   return view;
+}
+
+function showTopPrediction(prediction) {
+  const label = CatLogic.friendlyCategory(prediction.className);
+  addLine(results, 'h2', `Best guess: ${label.display}`, 'guess');
+  if (label.altered) {
+    addLine(results, 'p', `Original MobileNet label: ${label.original}`, 'disclaimer');
+    addLine(results, 'p', 'This describes a visual resemblance, not a confirmed breed or coat color.', 'disclaimer');
+  }
+  addLine(results, 'p', `Original photo model score: ${percent(prediction.probability)}. This is not measured accuracy.`);
 }
 
 async function showGeneralResult(predictions, classifier, useFocus) {
   if (!Array.isArray(predictions) || predictions.length === 0) throw new Error('No predictions');
   const best = predictions[0];
-  addLine(results, 'h2', `Best guess: ${best.className}`, 'guess');
-  addLine(results, 'p', `Original photo model score: ${percent(best.probability)}. This is not measured accuracy.`);
+  showTopPrediction(best);
   if (best.probability < 0.35) addLine(results, 'p', 'The model is less decisive about this photo.', 'warning');
   addLine(results, 'h3', 'Other possibilities');
   const list = document.createElement('ol');
   for (const prediction of predictions.slice(1, 5)) {
-    addLine(list, 'li', `${prediction.className} — ${percent(prediction.probability)}`);
+    const mapped = CatLogic.friendlyCategory(prediction.className);
+    const raw = mapped.altered ? ` (original: ${mapped.original})` : '';
+    addLine(list, 'li', `${mapped.display}${raw} — ${percent(prediction.probability)}`);
   }
   results.appendChild(list);
 
   const catSummary = CatLogic.summarize(predictions);
   if (catSummary.total > 0) {
     addLine(results, 'h3', 'Cat appearance clues');
-    addLine(results, 'p', `Top domestic-cat appearance: ${catSummary.best.label} — ${percent(catSummary.best.score)} raw grouped category score.`);
-    addLine(results, 'p', 'Tabby describes a coat pattern, not a breed. These ImageNet labels cannot reliably determine every cat color or pattern.', 'disclaimer');
+    addLine(results, 'p', `Leading cat appearance: ${catSummary.best.label} — ${percent(catSummary.best.score)} grouped model score.`);
+    addLine(results, 'p', 'Tabby is a coat pattern, not a breed. MobileNet does not reliably identify all coat colors or patterns.', 'disclaimer');
   }
 
   if (useFocus) {
-    setStatus('Checking the centered close-up…');
-    try {
-      const closePredictions = await classifier.classify(makeCenterView(preview), 5);
-      if (!closePredictions.length) throw new Error('No close-up predictions');
-      const closeBest = closePredictions[0];
-      addLine(results, 'h3', 'Centered close-up comparison');
-      addLine(results, 'p', `Close-up guess: ${closeBest.className} — ${percent(closeBest.probability)} model score.`);
-      addLine(results, 'p', 'This crops 14% from each edge. It may help when the animal is centered, but may cut off animals near the edges. Compare the guesses; a higher score is not automatically a more correct answer.', 'disclaimer');
-      if (closeBest.className !== best.className) addLine(results, 'p', 'The two views disagree. Try a clearer picture or a closer photo.', 'warning');
-    } catch (error) {
-      console.warn('Optional centered close-up failed', error);
-      addLine(results, 'p', 'Could not analyze the optional close-up. The original result above is still available.', 'warning');
+    setStatus('Comparing the photo from different views…');
+    addLine(results, 'h3', 'Three-view consistency check');
+    const views = [{ name: 'Original photo', predictions }];
+    const additional = [
+      { name: 'Mirrored photo', options: { flip: true } },
+      { name: 'Centered close-up', options: { inset: 0.14 } }
+    ];
+    for (const item of additional) {
+      try {
+        const guesses = await classifier.classify(makeView(preview, item.options), 15);
+        if (!guesses.length) throw new Error('No predictions for view');
+        views.push({ name: item.name, predictions: guesses });
+      } catch (error) {
+        console.warn('Optional comparison failed', item.name, error);
+        addLine(results, 'p', `${item.name} could not be analyzed.`, 'warning');
+      }
+    }
+    for (const view of views) {
+      const p = view.predictions[0];
+      const mapped = CatLogic.friendlyCategory(p.className);
+      addLine(results, 'p', `${view.name}: ${mapped.display} — ${percent(p.probability)} raw model score.`);
+      if (mapped.altered) addLine(results, 'p', `Original label: ${p.className}`, 'disclaimer');
+    }
+    if (views.length >= 2) {
+      const comparison = CatLogic.compareTopViews(views.map(view => view.predictions));
+      addLine(results, 'p', comparison.summary, comparison.allSameLabel ? 'disclaimer' : 'warning');
+      addLine(results, 'p', 'These are different views of the same photo, not independent evidence. Agreement does not measure accuracy or increase the original confidence score.', 'disclaimer');
+    } else {
+      addLine(results, 'p', 'Not enough views were available to compare results.', 'warning');
     }
   }
   results.hidden = false;

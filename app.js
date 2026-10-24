@@ -130,7 +130,7 @@ async function showCatResult(detections) {
   }
 }
 
-function showGeneralResult(predictions) {
+async function showGeneralResult(predictions, classifier) {
   if (!Array.isArray(predictions) || predictions.length === 0) throw new Error('No predictions');
   const best = predictions[0];
   addLine(results, 'h2', `Best guess: ${best.className}`, 'guess');
@@ -142,6 +142,44 @@ function showGeneralResult(predictions) {
     addLine(list, 'li', `${prediction.className} — ${percent(prediction.probability)}`);
   }
   results.appendChild(list);
+  addLine(results, 'h3', 'Cat appearance analysis');
+  const views = [predictions];
+  const firstPass = CatLogic.summarize(predictions);
+  if (firstPass.total >= 0.08) {
+    setStatus('Checking cat appearance across three views…');
+    const image = preview;
+    const makeView = (flip, inset) => {
+      const canvas = document.createElement('canvas');
+      const cropX = Math.round(image.naturalWidth * inset);
+      const cropY = Math.round(image.naturalHeight * inset);
+      const width = image.naturalWidth - 2 * cropX;
+      const height = image.naturalHeight - 2 * cropY;
+      const scale = Math.min(1, 384 / Math.max(width, height));
+      canvas.width = Math.max(1, Math.round(width * scale));
+      canvas.height = Math.max(1, Math.round(height * scale));
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Canvas unavailable');
+      if (flip) { ctx.translate(canvas.width, 0); ctx.scale(-1, 1); }
+      ctx.drawImage(image, cropX, cropY, width, height, 0, 0, canvas.width, canvas.height);
+      return canvas;
+    };
+    views.push(await classifier.classify(makeView(true, 0), 15));
+    views.push(await classifier.classify(makeView(false, 0.08), 15));
+  }
+  const assessment = CatLogic.assessViews(views);
+  if (assessment.verdict === 'appearance-guess') {
+    addLine(results, 'p', 'Best appearance guess: ' + assessment.best.label, 'guess');
+    addLine(results, 'p', assessment.best.note);
+  } else if (assessment.verdict === 'uncertain') {
+    addLine(results, 'p', 'Cat appearance unclear — the different views do not agree strongly enough.');
+  } else {
+    addLine(results, 'p', 'No strong domestic-cat signal in the model labels. This does not rule out a cat.');
+  }
+  addLine(results, 'p', 'Combined cat-category support: ' + percent(assessment.catSupport) + '. This combines related model labels, not a calibrated probability of being correct.');
+  if (assessment.verdict !== 'no-cat-signal') {
+    addLine(results, 'p', assessment.best.label + ' score averaged across views: ' + percent(assessment.best.score) + '; leading category in ' + assessment.agreeingViews + ' of ' + assessment.viewCount + ' views.');
+    addLine(results, 'p', 'Views come from the same photo, so agreement is not independent evidence. Tabby is a coat pattern, not a breed.', 'disclaimer');
+  }
   results.hidden = false;
 }
 
@@ -185,8 +223,8 @@ button.addEventListener('click', async () => {
       const detections = await model.detect(preview, 20, 0.3);
       await showCatResult(detections);
     } else {
-      const predictions = await model.classify(preview, 5);
-      showGeneralResult(predictions);
+      const predictions = await model.classify(preview, 15);
+      await showGeneralResult(predictions, model);
     }
     setStatus('Done! Try another picture.');
   } catch (error) {

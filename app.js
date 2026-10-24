@@ -80,7 +80,7 @@ function drawCatBoxes(cats) {
   canvas.hidden = false;
 }
 
-function showCatResult(detections) {
+async function showCatResult(detections) {
   const outcome = CatLogic.assess(detections);
   if (outcome.verdict === 'detected') {
     addLine(results, 'h2', outcome.cats.length > 1 ? '🐱 Cats detected!' : '🐱 Cat detected!', 'guess');
@@ -96,6 +96,38 @@ function showCatResult(detections) {
   addLine(results, 'p', 'Cat Detective is an experimental detector, not a guarantee.', 'disclaimer');
   drawCatBoxes(outcome.cats);
   results.hidden = false;
+  if (outcome.cats.length) {
+    addLine(results, 'h3', 'What kind of cat does it resemble?');
+    addLine(results, 'p', 'These are appearance guesses, not verified breeds. Tabby describes a coat pattern.', 'disclaimer');
+    try {
+      const generalModel = await getModel('general');
+      const cat = outcome.cats[0];
+      const [x, y, width, height] = cat.bbox;
+      const crop = document.createElement('canvas');
+      const left = Math.max(0, Math.floor(x));
+      const top = Math.max(0, Math.floor(y));
+      const cropWidth = Math.min(preview.naturalWidth - left, Math.ceil(width));
+      const cropHeight = Math.min(preview.naturalHeight - top, Math.ceil(height));
+      if (cropWidth <= 0 || cropHeight <= 0) throw new Error('Invalid cat crop');
+      crop.width = cropWidth;
+      crop.height = cropHeight;
+      const context = crop.getContext('2d');
+      if (!context) throw new Error('Canvas unavailable');
+      context.drawImage(preview, left, top, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+      const guesses = await generalModel.classify(crop, 5);
+      const look = CatLogic.catLook(guesses);
+      if (look) {
+        addLine(results, 'p', `Best appearance guess: ${look.label}`);
+        addLine(results, 'p', `${look.note} Model score: ${percent(look.score)} (not breed certainty).`, 'disclaimer');
+      } else {
+        addLine(results, 'p', 'Cat type unclear from this photo. Try a closer, brighter picture.');
+      }
+      if (outcome.cats.length > 1) addLine(results, 'p', 'Appearance guess is for the highest-scoring cat only.', 'disclaimer');
+    } catch (error) {
+      console.warn('Optional cat appearance estimate failed:', error);
+      addLine(results, 'p', 'Cat detected, but appearance analysis is unavailable right now.');
+    }
+  }
 }
 
 function showGeneralResult(predictions) {
@@ -151,7 +183,7 @@ button.addEventListener('click', async () => {
     setStatus('Looking at your photo…');
     if (mode === 'cat') {
       const detections = await model.detect(preview, 20, 0.3);
-      showCatResult(detections);
+      await showCatResult(detections);
     } else {
       const predictions = await model.classify(preview, 5);
       showGeneralResult(predictions);
